@@ -73,7 +73,7 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             server = new SpielServer(this);
             server.startServer();
         } else {
-            client = new SpielClient(this, serverIP);
+            client = new SpielClient(this);
             client.verbindeMitServer();
         }
     }
