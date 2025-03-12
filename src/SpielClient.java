@@ -7,15 +7,17 @@ public class SpielClient implements Runnable {
     private BufferedReader in;
     private SpielSteuerung spielSteuerung;
     private boolean isRunning = false;
-    private static final String serverIP = "172.18.26.81";
+    private String serverIP;
     private static final int PORT = 5000;
 
     /**
      * Konstruktor für den SpielClient
      * @param spielSteuerung Die Spielsteuerung des Client-Spielers
+     * @param serverIP Die IP-Adresse des Servers
      */
-    public SpielClient(SpielSteuerung spielSteuerung) {
+    public SpielClient(SpielSteuerung spielSteuerung, String serverIP) {
         this.spielSteuerung = spielSteuerung;
+        this.serverIP = serverIP;
     }
 
     /**
