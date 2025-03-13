@@ -103,6 +103,24 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     }
 
     /**
+     * Setzt den Spielmodus und startet das Spiel (wird vom Client aufgerufen)
+     * @param modus Der Spielmodus
+     */
+    public void setModusUndStarteSpiel(SpielModus modus) {
+        this.modus = modus;
+        initialisiereModus();
+        ballZuruecksetzen();
+        
+        // Starte den Spielthread
+        spielLaeuft = true;
+        spielThread = new Thread(this);
+        spielThread.start();
+        
+        // Benachrichtige das Spielfeld, dass das Spiel gestartet wurde
+        spielfeld.spielGestartet();
+    }
+
+    /**
      * Initialisiert die Ballgeschwindigkeit basierend auf dem aktuellen Spielmodus.
      */
     private void initialisiereModus() {
@@ -273,11 +291,11 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             }
         } else {
             // Spieler 2 Steuerung (nur für Client)
-            if (taste == KeyEvent.VK_UP && spieler2Y > 0) {
+            if (taste == KeyEvent.VK_O && spieler2Y > 0) {
                 spieler2Y -= 15;
                 client.sendeSpieler2Position(spieler2Y);
             }
-            if (taste == KeyEvent.VK_DOWN && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
+            if (taste == KeyEvent.VK_L && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
                 spieler2Y += 15;
                 client.sendeSpieler2Position(spieler2Y);
             }
@@ -441,8 +459,11 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         String[] parts = zustand.split(":");
         if (parts.length != 2) return;
         
-        if (parts[0].equals("UPDATE")) {
-            String[] teile = parts[1].split(",");
+        String command = parts[0];
+        String data = parts[1];
+        
+        if (command.equals("UPDATE")) {
+            String[] teile = data.split(",");
             if (teile.length == 6) {
                 ballX = Integer.parseInt(teile[0]);
                 ballY = Integer.parseInt(teile[1]);
@@ -452,10 +473,10 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                 spieler2Punkte = Integer.parseInt(teile[5]);
                 spielfeld.repaint();
             }
-        } else if (parts[0].equals("MODUS")) {
-            SpielModus modus = SpielModus.valueOf(parts[1]);
-            setModus(modus);
-        } else if (parts[0].equals("RESET")) {
+        } else if (command.equals("MODUS")) {
+            SpielModus modus = SpielModus.valueOf(data);
+            setModusUndStarteSpiel(modus);
+        } else if (command.equals("RESET")) {
             zurueckZumHauptmenue();
         }
     }
@@ -497,5 +518,13 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         } else {
             return client != null && client.isVerbunden();
         }
+    }
+
+    /**
+     * Gibt zurück, ob der aktuelle Spieler der Host ist
+     * @return true wenn der Spieler der Host ist, sonst false
+     */
+    public boolean istHost() {
+        return istHost;
     }
 }

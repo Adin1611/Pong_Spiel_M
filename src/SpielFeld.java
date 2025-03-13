@@ -178,18 +178,27 @@ public class SpielFeld extends JPanel {
         add(titelLabel, gbc);
         gbc.gridy++;
         add(infoLabel, gbc);
-        gbc.gridy++;
-        add(einfachButton, gbc);
-        gbc.gridy++;
-        add(mittelButton, gbc);
-        gbc.gridy++;
-        add(schwerButton, gbc);
+        
+        // Zeige Spielmodus-Buttons nur für den Host
+        if (steuerung != null && steuerung.istHost()) {
+            gbc.gridy++;
+            add(einfachButton, gbc);
+            gbc.gridy++;
+            add(mittelButton, gbc);
+            gbc.gridy++;
+            add(schwerButton, gbc);
+            
+            einfachButton.setVisible(true);
+            mittelButton.setVisible(true);
+            schwerButton.setVisible(true);
+        } else {
+            // Für den Client: Zeige nur eine Meldung, dass auf den Host gewartet wird
+            gbc.gridy++;
+            infoLabel.setText("Warte auf Spielmodus-Auswahl des Hosts...");
+        }
+        
         gbc.gridy++;
         add(verbindungsLabel, gbc);
-
-        einfachButton.setVisible(true);
-        mittelButton.setVisible(true);
-        schwerButton.setVisible(true);
 
         revalidate();
         repaint();
@@ -206,6 +215,18 @@ public class SpielFeld extends JPanel {
         mittelButton.setVisible(false);
         schwerButton.setVisible(false);
         infoLabel.setVisible(false);
+        titelLabel.setVisible(false);
+        verbindungsLabel.setVisible(false);
+    }
+
+    /**
+     * Markiert das Spiel als gestartet und versteckt alle UI-Elemente
+     */
+    public void spielGestartet() {
+        spielGestartet = true;
+        versteckeAlleButtons();
+        addKeyListener(steuerung);
+        requestFocusInWindow();
     }
 
     /**
@@ -221,6 +242,9 @@ public class SpielFeld extends JPanel {
         // Starte den Spielthread
         spielThread = new Thread(steuerung);
         spielThread.start();
+        
+        // Markiere das Spiel als gestartet
+        spielGestartet();
     }
 
     /**

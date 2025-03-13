@@ -67,17 +67,19 @@ public class SpielClient implements Runnable {
     private void verarbeiteServerNachricht(String nachricht) {
         // Format der Nachricht: COMMAND:DATA
         String[] parts = nachricht.split(":");
+        if (parts.length < 2) return;
+        
         String command = parts[0];
 
         switch (command) {
             case "MODUS":
-                // Setze den Spielmodus
+                // Setze den Spielmodus und starte das Spiel automatisch
                 SpielModus modus = SpielModus.valueOf(parts[1]);
-                spielSteuerung.setModus(modus);
+                spielSteuerung.setModusUndStarteSpiel(modus);
                 break;
             case "UPDATE":
                 // Aktualisiere Spielzustand (Ball, Spieler 1, Punkte)
-                spielSteuerung.updateSpielZustand(parts[1]);
+                spielSteuerung.updateSpielZustand(nachricht);
                 break;
             case "RESET":
                 // Zurück zum Hauptmenü
