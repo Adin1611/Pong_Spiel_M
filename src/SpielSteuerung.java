@@ -274,8 +274,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
 
     /**
      * Verarbeitet Tastendrücke zur Steuerung der Schläger, zum Neustart bei Spielende und zu Anzeigen des Pause-Menü.
-     *
-     * @param e Das KeyEvent, das die gedrückte Taste beschreibt.
      */
     @Override
     public void keyPressed(KeyEvent e) {
@@ -304,9 +302,11 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         // Gemeinsame Tastenfunktionen
         if (!spielLaeuft && taste == KeyEvent.VK_ENTER) {
             if (istHost) {
-                server.sendeSpielZustand("RESET");
+                server.sendeSpielZustand("RESET:");
+                spielNeustarten();
+            } else {
+                client.sendeSpieler2Position(-1); // Sende spezielle Position als Reset-Signal
             }
-            zurueckZumHauptmenue();
         }
 
         if (spielLaeuft && taste == KeyEvent.VK_SPACE) {
@@ -409,11 +409,10 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         spieler1Punkte = 0;
         spieler2Punkte = 0;
         ballZuruecksetzen();
+        spielLaeuft = true;
 
-        // Spiel-Thread neu starten (damit das Spiel dann wieder läuft, wenn der Thread nicht neu
-        // gestartet wird, würde die Spiellogik nicht mehr ausgeführt werden)
-        spielThread = new Thread(this); // erstellt einen neuen Thread, der die run()-Methode
-        // des aktuellen Objekts (this) ausführt
+        // Spiel-Thread neu starten
+        spielThread = new Thread(this);
         spielThread.start();
     }
 
@@ -455,7 +454,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Aktualisiert den Spielzustand basierend auf Netzwerknachrichten
      */
     public void updateSpielZustand(String zustand) {
-        // Format: "UPDATE:ballX,ballY,spieler1Y,spieler2Y,spieler1Punkte,spieler2Punkte"
         String[] parts = zustand.split(":");
         if (parts.length != 2) return;
         
@@ -477,7 +475,7 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             SpielModus modus = SpielModus.valueOf(data);
             setModusUndStarteSpiel(modus);
         } else if (command.equals("RESET")) {
-            zurueckZumHauptmenue();
+            spielNeustarten();
         }
     }
 
@@ -485,8 +483,14 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Aktualisiert die Position von Spieler 2 (wird vom Server aufgerufen)
      */
     public void updateSpieler2Position(int position) {
-        spieler2Y = position;
-        spielfeld.repaint();
+        if (position == -1) {
+            // Spezielle Position als Reset-Signal
+            server.sendeSpielZustand("RESET:");
+            spielNeustarten();
+        } else {
+            spieler2Y = position;
+            spielfeld.repaint();
+        }
     }
 
     /**
