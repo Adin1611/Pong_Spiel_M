@@ -93,11 +93,13 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      */
     public void setModus(SpielModus modus) {
         this.modus = modus;
-        if (istHost) {
-            server.sendeModus(modus);
-        }
         initialisiereModus();
         ballZuruecksetzen();
+        
+        // Sende den Modus an den Client, wenn wir der Host sind
+        if (istHost && server != null && server.isClientVerbunden()) {
+            server.sendeModus(modus);
+        }
     }
 
     /**
@@ -435,15 +437,27 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Aktualisiert den Spielzustand basierend auf Netzwerknachrichten
      */
     public void updateSpielZustand(String zustand) {
-        // Format: "ballX,ballY,spieler1Y,spieler2Y,spieler1Punkte,spieler2Punkte"
-        String[] teile = zustand.split(",");
-        ballX = Integer.parseInt(teile[0]);
-        ballY = Integer.parseInt(teile[1]);
-        spieler1Y = Integer.parseInt(teile[2]);
-        spieler2Y = Integer.parseInt(teile[3]);
-        spieler1Punkte = Integer.parseInt(teile[4]);
-        spieler2Punkte = Integer.parseInt(teile[5]);
-        spielfeld.repaint();
+        // Format: "UPDATE:ballX,ballY,spieler1Y,spieler2Y,spieler1Punkte,spieler2Punkte"
+        String[] parts = zustand.split(":");
+        if (parts.length != 2) return;
+        
+        if (parts[0].equals("UPDATE")) {
+            String[] teile = parts[1].split(",");
+            if (teile.length == 6) {
+                ballX = Integer.parseInt(teile[0]);
+                ballY = Integer.parseInt(teile[1]);
+                spieler1Y = Integer.parseInt(teile[2]);
+                spieler2Y = Integer.parseInt(teile[3]);
+                spieler1Punkte = Integer.parseInt(teile[4]);
+                spieler2Punkte = Integer.parseInt(teile[5]);
+                spielfeld.repaint();
+            }
+        } else if (parts[0].equals("MODUS")) {
+            SpielModus modus = SpielModus.valueOf(parts[1]);
+            setModus(modus);
+        } else if (parts[0].equals("RESET")) {
+            zurueckZumHauptmenue();
+        }
     }
 
     /**
@@ -474,6 +488,14 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             server.stopServer();
         } else if (!istHost && client != null) {
             client.verbindungSchliessen();
+        }
+    }
+
+    public boolean isVerbunden() {
+        if (istHost) {
+            return server != null && server.isClientVerbunden();
+        } else {
+            return client != null && client.isVerbunden();
         }
     }
 }

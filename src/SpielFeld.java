@@ -59,6 +59,18 @@ public class SpielFeld extends JPanel {
             zeigeSpielmodusAuswahl();
             verbindungsLabel.setText("Warte auf Client-Verbindung...");
             repaint();
+            
+            // Starte einen Timer, der den Verbindungsstatus überprüft
+            Timer verbindungsTimer = new Timer(1000, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent evt) {
+                    if (steuerung != null && steuerung.isVerbunden()) {
+                        verbindungsLabel.setText("Client verbunden");
+                        ((Timer)evt.getSource()).stop();
+                    }
+                }
+            });
+            verbindungsTimer.start();
         });
 
         // Client-Button ActionListener
@@ -73,6 +85,19 @@ public class SpielFeld extends JPanel {
             verbindungsLabel.setText("Verbinde mit Server...");
             versteckeAlleButtons();
             repaint();
+            
+            // Starte einen Timer, der den Verbindungsstatus überprüft
+            Timer verbindungsTimer = new Timer(1000, new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent evt) {
+                    if (steuerung != null && steuerung.isVerbunden()) {
+                        verbindungsLabel.setText("Verbunden mit Server");
+                        zeigeSpielmodusAuswahl();
+                        ((Timer)evt.getSource()).stop();
+                    }
+                }
+            });
+            verbindungsTimer.start();
         });
 
         // Spielmodus-Button ActionListener
@@ -192,6 +217,10 @@ public class SpielFeld extends JPanel {
         steuerung.setModus(modus);
         addKeyListener(steuerung);
         requestFocusInWindow();
+        
+        // Starte den Spielthread
+        spielThread = new Thread(steuerung);
+        spielThread.start();
     }
 
     /**
