@@ -168,7 +168,7 @@ public class SpielFeld extends JPanel {
     /**
      * Zeigt die Spielmodus-Auswahl an
      */
-    private void zeigeSpielmodusAuswahl() {
+    public void zeigeSpielmodusAuswahl() {
         removeAll();
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
