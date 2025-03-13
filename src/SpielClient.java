@@ -65,25 +65,44 @@ public class SpielClient implements Runnable {
      * @param nachricht Die empfangene Nachricht
      */
     private void verarbeiteServerNachricht(String nachricht) {
-        // Format der Nachricht: COMMAND:DATA
         String[] parts = nachricht.split(":");
-        if (parts.length < 2) return;
+        if (parts.length < 1) return;
         
         String command = parts[0];
-
+        
+        if (command.equals("VERSTECKE_NACHRICHT")) {
+            spielSteuerung.versteckePauseNachricht();
+            return;
+        }
+        
+        if (parts.length < 2) return;
+        
+        String data = parts[1];
+        
         switch (command) {
             case "MODUS":
-                // Setze den Spielmodus und starte das Spiel automatisch
-                SpielModus modus = SpielModus.valueOf(parts[1]);
+                SpielModus modus = SpielModus.valueOf(data);
                 spielSteuerung.setModusUndStarteSpiel(modus);
                 break;
             case "UPDATE":
-                // Aktualisiere Spielzustand (Ball, Spieler 1, Punkte)
                 spielSteuerung.updateSpielZustand(nachricht);
                 break;
             case "RESET":
-                // Zurück zum Hauptmenü
+                spielSteuerung.versteckePauseNachricht();
+                spielSteuerung.spielNeustarten();
+                break;
+            case "HAUPTMENUE":
                 spielSteuerung.zurueckZumHauptmenue();
+                break;
+            case "PAUSE":
+                spielSteuerung.pauseSpiel();
+                break;
+            case "FORTSETZEN":
+                spielSteuerung.versteckePauseNachricht();
+                spielSteuerung.fortsetzenSpiel();
+                break;
+            case "PAUSE_NACHRICHT":
+                spielSteuerung.zeigePauseNachricht(data);
                 break;
         }
     }
@@ -94,7 +113,19 @@ public class SpielClient implements Runnable {
      */
     public void sendeSpieler2Position(int position) {
         if (out != null) {
-            out.println("MOVE:" + position);
+            // Bei speziellen Signalen
+            if (position == -5) {
+                // Pause-Nachricht
+                out.println("MOVE:" + position);
+            } else if (position == -4 || position == -1) {
+                // Bei Fortsetzen oder Neustart: Erst Verstecken-Signal senden
+                out.println("VERSTECKE_NACHRICHT:");
+                // Dann das eigentliche Signal
+                out.println("MOVE:" + position);
+            } else {
+                // Normale Bewegung
+                out.println("MOVE:" + position);
+            }
         }
     }
 

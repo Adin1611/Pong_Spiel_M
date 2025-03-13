@@ -16,6 +16,7 @@ public class SpielFeld extends JPanel {
     // Thread ausführt
     private boolean spielGestartet = false; // Status, ob das Spiel gestartet ist
     private boolean netzwerkAuswahlAnzeigen = true;  // Neue Variable für den Auswahlzustand
+    private JFrame pauseNachrichtFrame;
 
     /**
      * Konstruktor für das SpielFeld.
@@ -125,9 +126,9 @@ public class SpielFeld extends JPanel {
         gbc.gridy++;
         add(hostButton, gbc);
         gbc.gridy++;
-        add(clientButton, gbc);
-        gbc.gridy++;
         add(ipTextField, gbc);
+        gbc.gridy++;
+        add(clientButton, gbc);
         gbc.gridy++;
         add(verbindungsLabel, gbc);
     }
@@ -149,9 +150,9 @@ public class SpielFeld extends JPanel {
         gbc.gridy++;
         add(hostButton, gbc);
         gbc.gridy++;
-        add(clientButton, gbc);
-        gbc.gridy++;
         add(ipTextField, gbc);
+        gbc.gridy++;
+        add(clientButton, gbc);
         gbc.gridy++;
         add(verbindungsLabel, gbc);
 
@@ -270,6 +271,43 @@ public class SpielFeld extends JPanel {
         // füllen des Hintergrunds mit der aktuellen usw.
         if (spielGestartet) {
             steuerung.zeichneSpielfeld(g); // Zeichnet das Spielfeld, wenn das Spiel gestartet ist
+        }
+    }
+
+    /**
+     * Zeigt eine Pause-Nachricht in einer Box an
+     */
+    public void zeigePauseNachricht(String nachricht) {
+        if (pauseNachrichtFrame != null) {
+            pauseNachrichtFrame.dispose();
+        }
+        
+        pauseNachrichtFrame = new JFrame("Spiel pausiert");
+        pauseNachrichtFrame.setSize(300, 100);
+        pauseNachrichtFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        pauseNachrichtFrame.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        JLabel nachrichtLabel = new JLabel(nachricht);
+        nachrichtLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        panel.add(nachrichtLabel, gbc);
+
+        pauseNachrichtFrame.add(panel);
+        pauseNachrichtFrame.setVisible(true);
+    }
+
+    /**
+     * Versteckt die Pause-Nachricht
+     */
+    public void versteckePauseNachricht() {
+        if (pauseNachrichtFrame != null) {
+            pauseNachrichtFrame.dispose();
+            pauseNachrichtFrame = null;
         }
     }
 }

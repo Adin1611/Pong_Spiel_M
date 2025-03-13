@@ -18,6 +18,9 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private static final int SCHLAEGER_HOEHE = 100; // Höhe der Schläger
     private static final int BALL_GROESSE = 20; // Durchmesser des Balls
     private static final int SCHLAEGER_ABSTAND = 10; // Abstand der Schläger vom Spielfeldrand
+    private static final int SCHLAEGER_GESCHWINDIGKEIT = 15;
+    private long letzterTastendruck = 0;
+    private static final long TASTENDRUCK_VERZOEGERUNG = 50; // 50ms Verzögerung zwischen Tastendrücken
 
     private int spieler1Y; // Y-Position des Schlägers des Spieler1
     private int spieler2Y; // Y-Position des Schlägers des Spieler2
@@ -31,7 +34,7 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private JFrame pausenMenueFrame;
     private Thread spielThread; // Thread für die Spiel
     private boolean spielLaeuft = true;
-    private boolean istPausiert = false;
+    public boolean istPausiert = false;
     private boolean istPausenMenueOffen = false;
     private SpielServer server;  // Nur für Host
     private SpielClient client;  // Nur für Client
@@ -111,8 +114,14 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         initialisiereModus();
         ballZuruecksetzen();
         
-        // Starte den Spielthread
+        // Starte das Spiel
         spielLaeuft = true;
+        istPausiert = false;
+        
+        // Starte den Spielthread
+        if (spielThread != null) {
+            spielThread.interrupt();
+        }
         spielThread = new Thread(this);
         spielThread.start();
         
@@ -278,28 +287,52 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     @Override
     public void keyPressed(KeyEvent e) {
         int taste = e.getKeyCode();
+        long aktuelleZeit = System.currentTimeMillis();
+        
+        // Prüfe, ob genug Zeit seit dem letzten Tastendruck vergangen ist
+        if (aktuelleZeit - letzterTastendruck < TASTENDRUCK_VERZOEGERUNG) {
+            return; // Ignoriere zu schnelle Tastendrücke
+        }
+        
+        letzterTastendruck = aktuelleZeit;
 
         if (istHost) {
             // Spieler 1 Steuerung (nur für Host)
             if (taste == KeyEvent.VK_W && spieler1Y > 0) {
-                spieler1Y -= 15;
+                spieler1Y -= SCHLAEGER_GESCHWINDIGKEIT;
+                if (spieler1Y < 0) spieler1Y = 0; // Verhindere, dass der Schläger aus dem Spielfeld ragt
             }
             if (taste == KeyEvent.VK_S && spieler1Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
-                spieler1Y += 15;
+                spieler1Y += SCHLAEGER_GESCHWINDIGKEIT;
+                if (spieler1Y > spielfeld.getHeight() - SCHLAEGER_HOEHE) {
+                    spieler1Y = spielfeld.getHeight() - SCHLAEGER_HOEHE; // Begrenze die Position
+                }
             }
         } else {
             // Spieler 2 Steuerung (nur für Client)
             if (taste == KeyEvent.VK_O && spieler2Y > 0) {
-                spieler2Y -= 15;
+                spieler2Y -= SCHLAEGER_GESCHWINDIGKEIT;
+                if (spieler2Y < 0) spieler2Y = 0;
                 client.sendeSpieler2Position(spieler2Y);
             }
             if (taste == KeyEvent.VK_L && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
-                spieler2Y += 15;
+                spieler2Y += SCHLAEGER_GESCHWINDIGKEIT;
+                if (spieler2Y > spielfeld.getHeight() - SCHLAEGER_HOEHE) {
+                    spieler2Y = spielfeld.getHeight() - SCHLAEGER_HOEHE;
+                }
                 client.sendeSpieler2Position(spieler2Y);
             }
         }
 
-        // Gemeinsame Tastenfunktionen
+        // Gemeinsame Tastenfunktionen für Host und Client
+        if (spielLaeuft && taste == KeyEvent.VK_SPACE) {
+            pauseSpiel();
+            if (!istHost) {
+                // Client sendet Pause-Signal an Server
+                client.sendeSpieler2Position(-2); // -2 als spezielles Signal für Pause
+            }
+        }
+
         if (!spielLaeuft && taste == KeyEvent.VK_ENTER) {
             if (istHost) {
                 server.sendeSpielZustand("RESET:");
@@ -308,29 +341,42 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                 client.sendeSpieler2Position(-1); // Sende spezielle Position als Reset-Signal
             }
         }
-
-        if (spielLaeuft && taste == KeyEvent.VK_SPACE) {
-            pauseSpiel();
-        }
     }
 
     /**
      * Anhalten des Spiels und Anzeigen des Pause-Menüs
      */
-    private void pauseSpiel() {
+    public void pauseSpiel() {
         if (!istPausenMenueOffen) {
             istPausiert = true;
             // Wenn der Spiel-Thread existiert und noch läuft, wird er unterbrochen
             if (spielThread != null && spielThread.isAlive()) {
                 try {
-                    spielThread.interrupt(); // unterbricht den laufenden Spiel-Thread
+                    spielThread.interrupt();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
+            
+            // Zeige Pause-Menü nur für den Spieler an, der pausiert hat
             pausenMenueAnzeigen();
+            
+            // Sende Pause-Nachricht nur an den anderen Spieler
+            if (istHost) {
+                server.sendeSpielZustand("PAUSE_NACHRICHT:Spieler 1 hat das Spiel pausiert");
+            } else {
+                client.sendeSpieler2Position(-5); // -5 als Signal für Pause-Nachricht
+            }
+            
             istPausenMenueOffen = true;
         }
+    }
+
+    /**
+     * Zeigt eine Pause-Nachricht an
+     */
+    public void zeigePauseNachricht(String nachricht) {
+        spielfeld.zeigePauseNachricht(nachricht);
     }
 
     /**
@@ -341,16 +387,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         pausenMenueFrame.setSize(300, 200);
         pausenMenueFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         pausenMenueFrame.setLocationRelativeTo(spielfeld);
-
-        JButton hauptmenueButton = new JButton("Hauptmenü");
-        hauptmenueButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                pausenMenueFrame.dispose(); // schließt das Pause-Menü
-                istPausenMenueOffen = false;
-                zurueckZumHauptmenue();
-            }
-        });
 
         JButton neustartButton = new JButton("Neustart");
         neustartButton.addActionListener(new ActionListener() {
@@ -373,20 +409,16 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         });
 
         JPanel panel = new JPanel();
-        panel.setLayout(new GridBagLayout()); // Layout auf GridBagLayout setzen
+        panel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0; // Spalte
-        gbc.gridy = 0; // Zeile
-        gbc.insets = new Insets(10, 0, 10, 0); // Abstand zwischen den Buttons
-        gbc.anchor = GridBagConstraints.CENTER; // Zentrieren
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(10, 0, 10, 0);
+        gbc.anchor = GridBagConstraints.CENTER;
 
-        panel.add(hauptmenueButton, gbc); // Hauptmenü Button hinzufügen
-        gbc.gridy++; // Nächste Zeile
-
-        panel.add(neustartButton, gbc); // Neustart Button hinzufügen
-        gbc.gridy++; // Nächste Zeile
-
-        panel.add(fortsetzenButton, gbc); // Fortsetzen Button hinzufügen
+        panel.add(neustartButton, gbc);
+        gbc.gridy++;
+        panel.add(fortsetzenButton, gbc);
 
         pausenMenueFrame.add(panel);
         pausenMenueFrame.setVisible(true);
@@ -396,35 +428,98 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Zurückkehren zum Hauptmenü
      */
     public void zurueckZumHauptmenue() {
+        // Spiel beenden und Verbindung trennen
+        spielLaeuft = false;
+        istPausiert = false;
+        istPausenMenueOffen = false;
+        
+        // Thread beenden
+        if (spielThread != null) {
+            spielThread.interrupt();
+            spielThread = null;
+        }
+        
+        // Punktestände zurücksetzen
         spieler1Punkte = 0;
         spieler2Punkte = 0;
-        spielfeld.resetSpiel();
+        
+        // Benachrichtige den anderen Spieler
+        if (istHost) {
+            if (server != null) {
+                server.sendeSpielZustand("HAUPTMENUE:");
+                server.stopServer();
+            }
+        } else {
+            if (client != null) {
+                client.sendeSpieler2Position(-3); // -3 als Signal für Hauptmenü
+                client.verbindungSchliessen();
+            }
+        }
+        
+        // Zum Hauptmenü zurückkehren
+        spielfeld.zeigeSpielmodusAuswahl();  // Diese Methode muss public sein
         spielfeld.repaint();
     }
 
     /**
      * Neustarten des Spiels
      */
-    private void spielNeustarten() {
+    public void spielNeustarten() {
+        // Verstecke die Pause-Nachricht
+        spielfeld.versteckePauseNachricht();
+        
+        // Setze Spielzustand zurück
         spieler1Punkte = 0;
         spieler2Punkte = 0;
         ballZuruecksetzen();
+        istPausiert = false;
+        istPausenMenueOffen = false;
+        
+        // Beende den alten Thread falls vorhanden
+        if (spielThread != null) {
+            spielThread.interrupt();
+            spielThread = null;
+        }
+        
+        // Benachrichtige den anderen Spieler
+        if (istHost) {
+            server.sendeSpielZustand("RESET:");
+        } else {
+            client.sendeSpieler2Position(-1); // -1 als Reset-Signal
+        }
+        
+        // Starte das Spiel neu
         spielLaeuft = true;
-
-        // Spiel-Thread neu starten
         spielThread = new Thread(this);
         spielThread.start();
+        
+        // Stelle sicher, dass das Spielfeld richtig initialisiert ist
+        spielfeld.spielGestartet();
+        
+        // Aktualisiere die Anzeige
+        spielfeld.repaint();
     }
 
     /**
      * Fortsetzen des Spiels
      */
-    private void fortsetzenSpiel() {
-        countdownStarten();
-        istPausiert = false;
+    public void fortsetzenSpiel() {
         if (pausenMenueFrame != null) {
-            pausenMenueFrame.dispose(); // Menü schließen
+            pausenMenueFrame.dispose();
         }
+        
+        // Verstecke die Pause-Nachricht
+        spielfeld.versteckePauseNachricht();
+        
+        // Benachrichtige den anderen Spieler
+        if (istHost) {
+            server.sendeSpielZustand("FORTSETZEN:");
+        } else {
+            client.sendeSpieler2Position(-4); // -4 als Signal für Fortsetzen
+        }
+        
+        istPausenMenueOffen = false;
+        countdownStarten();
     }
 
     /**
@@ -437,13 +532,19 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (countdown > 0) {
-                    // System.out.println(countdown);
                     countdown--;
                 } else {
-                    ((Timer) e.getSource()).stop(); // stoppt den Timer
-                    // Spiel-Thread neu starten - gilt das Gleiche wie vorher
+                    ((Timer) e.getSource()).stop();
+                    istPausiert = false;
+                    // Spiel-Thread neu starten
+                    if (spielThread != null) {
+                        spielThread.interrupt();
+                    }
                     spielThread = new Thread(SpielSteuerung.this);
                     spielThread.start();
+                    
+                    // Stelle sicher, dass das Spielfeld aktiv ist
+                    spielfeld.spielGestartet();
                 }
             }
         });
@@ -476,6 +577,14 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             setModusUndStarteSpiel(modus);
         } else if (command.equals("RESET")) {
             spielNeustarten();
+        } else if (command.equals("PAUSE_NACHRICHT")) {
+            // Nur Nachricht anzeigen, kein Pause-Menü
+            zeigePauseNachricht(data);
+            istPausiert = true;
+        } else if (command.equals("FORTSETZEN")) {
+            fortsetzenSpiel();
+        } else if (command.equals("HAUPTMENUE")) {
+            zurueckZumHauptmenue();
         }
     }
 
@@ -483,10 +592,26 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Aktualisiert die Position von Spieler 2 (wird vom Server aufgerufen)
      */
     public void updateSpieler2Position(int position) {
-        if (position == -1) {
-            // Spezielle Position als Reset-Signal
+        if (position == -5) {
+            // Pause-Nachricht vom Client
+            spielfeld.zeigePauseNachricht("Client hat das Spiel pausiert");
+            istPausiert = true;
+        } else if (position == -1) {
+            // Reset-Signal
             server.sendeSpielZustand("RESET:");
             spielNeustarten();
+        } else if (position == -2) {
+            // Pause-Signal
+            server.sendeSpielZustand("PAUSE:");
+            pauseSpiel();
+        } else if (position == -3) {
+            // Hauptmenü-Signal
+            server.sendeSpielZustand("HAUPTMENUE:");
+            zurueckZumHauptmenue();
+        } else if (position == -4) {
+            // Fortsetzen-Signal
+            server.sendeSpielZustand("FORTSETZEN:");
+            fortsetzenSpiel();
         } else {
             spieler2Y = position;
             spielfeld.repaint();
@@ -530,5 +655,16 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      */
     public boolean istHost() {
         return istHost;
+    }
+
+    /**
+     * Versteckt die Pause-Nachricht
+     */
+    public void versteckePauseNachricht() {
+        spielfeld.versteckePauseNachricht();
+    }
+
+    public void setPausiert(boolean pausiert) {
+        this.istPausiert = pausiert;
     }
 }

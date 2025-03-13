@@ -73,11 +73,35 @@ public class SpielServer implements Runnable {
         String[] parts = nachricht.split(":");
         String command = parts[0];
 
+        if (command.equals("VERSTECKE_NACHRICHT")) {
+            // Verstecke die Pause-Nachricht beim Host
+            spielSteuerung.versteckePauseNachricht();
+            return;
+        }
+
         switch (command) {
             case "MOVE":
-                // Aktualisiere Position des Spieler 2
                 int neuePosition = Integer.parseInt(parts[1]);
-                spielSteuerung.updateSpieler2Position(neuePosition);
+                if (neuePosition == -5) {
+                    // Pause-Nachricht vom Client - nur Nachricht anzeigen, kein Pause-Menü
+                    spielSteuerung.zeigePauseNachricht("Spieler 2 hat das Spiel pausiert");
+                    spielSteuerung.setPausiert(true);
+                } else if (neuePosition == -1) {
+                    // Reset-Signal
+                    spielSteuerung.versteckePauseNachricht();
+                    spielSteuerung.spielNeustarten();
+                    sendeSpielZustand("RESET:");
+                } else if (neuePosition == -2) {
+                    // Pause-Signal - nicht mehr verwendet
+                } else if (neuePosition == -4) {
+                    // Fortsetzen-Signal
+                    spielSteuerung.versteckePauseNachricht();
+                    spielSteuerung.fortsetzenSpiel();
+                    sendeSpielZustand("FORTSETZEN:");
+                } else {
+                    // Normale Bewegung
+                    spielSteuerung.updateSpieler2Position(neuePosition);
+                }
                 break;
             // Weitere Befehle können hier hinzugefügt werden
         }
@@ -89,6 +113,10 @@ public class SpielServer implements Runnable {
      */
     public void sendeSpielZustand(String spielZustand) {
         if (out != null) {
+            // Bei FORTSETZEN oder RESET auch die Pause-Nachricht entfernen
+            if (spielZustand.startsWith("FORTSETZEN:") || spielZustand.startsWith("RESET:")) {
+                out.println("VERSTECKE_NACHRICHT:");
+            }
             out.println(spielZustand);
         }
     }
