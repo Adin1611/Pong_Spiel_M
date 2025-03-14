@@ -11,12 +11,10 @@ public class SpielFeld extends JPanel {
     private JButton einfachButton, mittelButton, schwerButton; // Buttons für die verschiedenen Schwierigkeitsgrade
     private JButton hostButton, clientButton; // Buttons für Host/Client-Auswahl
     private JTextField ipTextField; // Textfeld für Eingabe der IP-Adresse
-    private JLabel titelLabel, infoLabel, verbindungsLabel;
+    private JLabel titelLabel, infoLabel, verbindungsLabel; // Labels für Hauptmenü
     private Thread spielThread; // Thread für die Spielausführung, der die Spiellogik in einem separaten Thread ausführt
     private JFrame pauseNachrichtFrame; // Fenster wenn Spiel pausiert wird
-    private boolean spielGestartet = false; // Status, ob das Spiel gestartet ist
-    //private boolean netzwerkAuswahlAnzeigen = true;  // Neue Variable für den Auswahlzustand
-    
+    private boolean spielGestartet = false; // Status, ob das Spiel gestartet ist    
 
     /**
      * Konstruktor für das SpielFeld.
@@ -54,51 +52,57 @@ public class SpielFeld extends JPanel {
         schwerButton = new JButton("Schwer");
 
         // Host-Button ActionListener
-        hostButton.addActionListener(e -> {
-            //netzwerkAuswahlAnzeigen = false;
-            steuerung = new SpielSteuerung(this);
-            zeigeSpielmodusAuswahl();
-            verbindungsLabel.setText("Warte auf Client-Verbindung...");
-            repaint();
-            
-            // Starte einen Timer, der den Verbindungsstatus überprüft
-            Timer verbindungsTimer = new Timer(1000, new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent evt) {
-                    if (steuerung != null && steuerung.isVerbunden()) {
-                        verbindungsLabel.setText("Client verbunden");
-                        ((Timer)evt.getSource()).stop();
+        hostButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed (ActionEvent e){
+                steuerung = new SpielSteuerung(SpielFeld.this);
+                zeigeSpielmodusAuswahl();
+                verbindungsLabel.setText("Warte auf Client-Verbindung...");
+                repaint();
+                
+                // Timer, der jede Sekunde (1000ms) überprüft, ob ein Client mit dem Server (Host) verbunden ist.
+                // Sobald eine Verbindung hergestellt wurde, wird die Anzeige aktualisiert und der Timer gestoppt.
+                Timer verbindungsTimer = new Timer(1000, new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        if (steuerung != null && steuerung.isVerbunden()) {
+                            verbindungsLabel.setText("Client verbunden");
+                            ((Timer) e.getSource()).stop();
+                        }
                     }
+                });
+                verbindungsTimer.start();
                 }
-            });
-            verbindungsTimer.start();
-        });
-
+            }); 
+            
         // Client-Button ActionListener
-        clientButton.addActionListener(e -> {
-            String ip = ipTextField.getText().trim();
-            if (ip.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Bitte geben Sie eine IP-Adresse ein.");
-                return;
-            }
-            //netzwerkAuswahlAnzeigen = false;
-            steuerung = new SpielSteuerung(this, ip);
-            verbindungsLabel.setText("Verbinde mit Server...");
-            versteckeAlleButtons();
-            repaint();
-            
-            // Starte einen Timer, der den Verbindungsstatus überprüft
-            Timer verbindungsTimer = new Timer(1000, new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent evt) {
-                    if (steuerung != null && steuerung.isVerbunden()) {
-                        verbindungsLabel.setText("Verbunden mit Server");
-                        zeigeSpielmodusAuswahl();
-                        ((Timer)evt.getSource()).stop();
-                    }
+        clientButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e){
+                String ip = ipTextField.getText().trim(); // trim(): entfernt alle Leerzeichen, Tabulatoren und Zeilenumbrüche 
+                                                          // am Anfang und Ende des Strings (IP-Adresse)
+                if (ip.isEmpty()) {
+                    JOptionPane.showMessageDialog(SpielFeld.this, "Bitte geben Sie eine IP-Adresse ein.");
+                    return;
                 }
-            });
-            verbindungsTimer.start();
+                
+                steuerung = new SpielSteuerung(SpielFeld.this, ip);
+                versteckeAlleButtons();
+                repaint();
+            
+                /* braucht man glaub ich nicht
+                Timer verbindungsTimer = new Timer(1000, new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        if (steuerung != null && steuerung.isVerbunden()) {
+                            zeigeSpielmodusAuswahl();
+                            ((Timer) e.getSource()).stop();
+                        }
+                    }
+                });
+                verbindungsTimer.start();
+                */
+            }
         });
 
         // Spielmodus-Button ActionListener
