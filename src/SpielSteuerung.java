@@ -9,8 +9,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 
 /**
- * Die Klasse SpielSteuerung steuert das Spiel, indem sie die Bewegungen der Schläger und des Balls verwaltet
- * und die Spielregeln implementiert.
+ * Die Klasse SpielSteuerung steuert das Spiel (Spiellogik).
  */
 public class SpielSteuerung extends KeyAdapter implements Runnable {
     private final SpielFeld spielfeld; // Spielfeld
@@ -296,16 +295,33 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         
         letzterTastendruck = aktuelleZeit;
 
+        // Gemeinsame Tastenfunktionen für Host und Client
+        if (taste == KeyEvent.VK_SPACE) {
+            // Debug-Ausgabe
+            System.out.println("Leertaste gedrückt von " + (istHost ? "Host" : "Client"));
+            System.out.println("spielLaeuft: " + spielLaeuft + ", istPausiert: " + istPausiert);
+            
+            // Forciere Pause unabhängig vom Status
+            if (!istHost) {
+                // Client sendet Pause-Signal an Server
+                System.out.println("Client sendet Pause-Signal");
+                client.sendeSpieler2Position(-2); // -2 als spezielles Signal für Pause
+                pauseSpiel(); // Direkt pausieren, ohne Bedingung
+            } else {
+                pauseSpiel(); // Direkt pausieren, ohne Bedingung
+            }
+        }
+
         if (istHost) {
             // Spieler 1 Steuerung (nur für Host)
             if (taste == KeyEvent.VK_W && spieler1Y > 0) {
                 spieler1Y -= SCHLAEGER_GESCHWINDIGKEIT;
-                if (spieler1Y < 0) spieler1Y = 0; // Verhindere, dass der Schläger aus dem Spielfeld ragt
+                if (spieler1Y < 0) spieler1Y = 0;
             }
             if (taste == KeyEvent.VK_S && spieler1Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
                 spieler1Y += SCHLAEGER_GESCHWINDIGKEIT;
                 if (spieler1Y > spielfeld.getHeight() - SCHLAEGER_HOEHE) {
-                    spieler1Y = spielfeld.getHeight() - SCHLAEGER_HOEHE; // Begrenze die Position
+                    spieler1Y = spielfeld.getHeight() - SCHLAEGER_HOEHE;
                 }
             }
         } else {
@@ -324,15 +340,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             }
         }
 
-        // Gemeinsame Tastenfunktionen für Host und Client
-        if (spielLaeuft && taste == KeyEvent.VK_SPACE) {
-            pauseSpiel();
-            if (!istHost) {
-                // Client sendet Pause-Signal an Server
-                client.sendeSpieler2Position(-2); // -2 als spezielles Signal für Pause
-            }
-        }
-
         if (!spielLaeuft && taste == KeyEvent.VK_ENTER) {
             if (istHost) {
                 server.sendeSpielZustand("RESET:");
@@ -347,29 +354,32 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Anhalten des Spiels und Anzeigen des Pause-Menüs
      */
     public void pauseSpiel() {
-        if (!istPausenMenueOffen) {
-            istPausiert = true;
-            // Wenn der Spiel-Thread existiert und noch läuft, wird er unterbrochen
-            if (spielThread != null && spielThread.isAlive()) {
-                try {
-                    spielThread.interrupt();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        System.out.println("pauseSpiel() aufgerufen von " + (istHost ? "Host" : "Client"));
+        System.out.println("istPausenMenueOffen: " + istPausenMenueOffen);
+        
+        // Forciere Pause unabhängig vom Status
+        istPausiert = true;
+        
+        // Wenn der Spiel-Thread existiert und noch läuft, wird er unterbrochen
+        if (spielThread != null && spielThread.isAlive()) {
+            try {
+                spielThread.interrupt();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            
-            // Zeige Pause-Menü nur für den Spieler an, der pausiert hat
-            pausenMenueAnzeigen();
-            
-            // Sende Pause-Nachricht nur an den anderen Spieler
-            if (istHost) {
-                server.sendeSpielZustand("PAUSE_NACHRICHT:Spieler 1 hat das Spiel pausiert");
-            } else {
-                client.sendeSpieler2Position(-5); // -5 als Signal für Pause-Nachricht
-            }
-            
-            istPausenMenueOffen = true;
         }
+        
+        // Zeige Pause-Menü nur für den Spieler an, der pausiert hat
+        pausenMenueAnzeigen();
+        
+        // Sende Pause-Nachricht nur an den anderen Spieler
+        if (istHost) {
+            server.sendeSpielZustand("PAUSE_NACHRICHT:Spieler 1 hat das Spiel pausiert");
+        } else {
+            client.sendeSpieler2Position(-5); // -5 als Signal für Pause-Nachricht
+        }
+        
+        istPausenMenueOffen = true;
     }
 
     /**
@@ -498,6 +508,9 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         
         // Aktualisiere die Anzeige
         spielfeld.repaint();
+        
+        // Debug-Ausgabe
+        System.out.println("Spiel neugestartet von " + (istHost ? "Host" : "Client"));
     }
 
     /**

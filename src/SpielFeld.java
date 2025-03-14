@@ -4,19 +4,19 @@ import java.awt.event.*;
 
 /**
  * Die Klasse SpielFeld repräsentiert das Spielfeld für das Pong-Spiel.
- * Sie verwaltet die Benutzeroberfläche und die Spielsteuerung.
+ * Sie verwaltet die Benutzeroberfläche.
  */
 public class SpielFeld extends JPanel {
     private SpielSteuerung steuerung; // Steuerung des Spiels
     private JButton einfachButton, mittelButton, schwerButton; // Buttons für die verschiedenen Schwierigkeitsgrade
-    private JButton hostButton, clientButton;  // Neue Buttons für Host/Client-Auswahl
-    private JTextField ipTextField;            // Textfeld für IP-Eingabe
+    private JButton hostButton, clientButton; // Buttons für Host/Client-Auswahl
+    private JTextField ipTextField; // Textfeld für Eingabe der IP-Adresse
     private JLabel titelLabel, infoLabel, verbindungsLabel;
-    private Thread spielThread; // Thread für die Spielausführung, der die Spiellogik in einem separaten
-    // Thread ausführt
+    private Thread spielThread; // Thread für die Spielausführung, der die Spiellogik in einem separaten Thread ausführt
+    private JFrame pauseNachrichtFrame; // Fenster wenn Spiel pausiert wird
     private boolean spielGestartet = false; // Status, ob das Spiel gestartet ist
-    private boolean netzwerkAuswahlAnzeigen = true;  // Neue Variable für den Auswahlzustand
-    private JFrame pauseNachrichtFrame;
+    //private boolean netzwerkAuswahlAnzeigen = true;  // Neue Variable für den Auswahlzustand
+    
 
     /**
      * Konstruktor für das SpielFeld.
@@ -55,7 +55,7 @@ public class SpielFeld extends JPanel {
 
         // Host-Button ActionListener
         hostButton.addActionListener(e -> {
-            netzwerkAuswahlAnzeigen = false;
+            //netzwerkAuswahlAnzeigen = false;
             steuerung = new SpielSteuerung(this);
             zeigeSpielmodusAuswahl();
             verbindungsLabel.setText("Warte auf Client-Verbindung...");
@@ -81,7 +81,7 @@ public class SpielFeld extends JPanel {
                 JOptionPane.showMessageDialog(this, "Bitte geben Sie eine IP-Adresse ein.");
                 return;
             }
-            netzwerkAuswahlAnzeigen = false;
+            //netzwerkAuswahlAnzeigen = false;
             steuerung = new SpielSteuerung(this, ip);
             verbindungsLabel.setText("Verbinde mit Server...");
             versteckeAlleButtons();
@@ -226,6 +226,14 @@ public class SpielFeld extends JPanel {
     public void spielGestartet() {
         spielGestartet = true;
         versteckeAlleButtons();
+        
+        // Entferne zuerst alle KeyListener, um Duplikate zu vermeiden
+        KeyListener[] listeners = getKeyListeners();
+        for (KeyListener listener : listeners) {
+            removeKeyListener(listener);
+        }
+        
+        // Füge den KeyListener hinzu
         addKeyListener(steuerung);
         requestFocusInWindow();
     }
