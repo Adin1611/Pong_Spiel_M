@@ -38,7 +38,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private SpielServer server;  // Nur für Host
     private SpielClient client;  // Nur für Client
     private boolean istHost;     // Unterscheidung zwischen Host und Client
-    private String serverIP;     // IP-Adresse für Client-Verbindung
 
     /**
      * Konstruktor für Host-Modus (Spieler 1)
@@ -63,7 +62,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private SpielSteuerung(SpielFeld spielfeld, boolean istHost, String serverIP) {
         this.spielfeld = spielfeld;
         this.istHost = istHost;
-        this.serverIP = serverIP;
         
         spielfeld.setFocusable(true);
         spieler1Y = spielfeld.getHeight() / 2 - SCHLAEGER_HOEHE / 2;
@@ -301,6 +299,12 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             System.out.println("Leertaste gedrückt von " + (istHost ? "Host" : "Client"));
             System.out.println("spielLaeuft: " + spielLaeuft + ", istPausiert: " + istPausiert);
             
+            // Prüfe, ob das Spiel beendet ist (ein Spieler hat 3 Punkte)
+            if (spieler1Punkte >= 3 || spieler2Punkte >= 3) {
+                System.out.println("Spiel ist bereits beendet, ignoriere Leertaste");
+                return;
+            }
+            
             // Forciere Pause unabhängig vom Status
             if (!istHost) {
                 // Client sendet Pause-Signal an Server
@@ -314,11 +318,11 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
 
         if (istHost) {
             // Spieler 1 Steuerung (nur für Host)
-            if (taste == KeyEvent.VK_W && spieler1Y > 0) {
+            if (taste == KeyEvent.VK_W && spieler1Y > 0 && spielLaeuft) {
                 spieler1Y -= SCHLAEGER_GESCHWINDIGKEIT;
                 if (spieler1Y < 0) spieler1Y = 0;
             }
-            if (taste == KeyEvent.VK_S && spieler1Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
+            if (taste == KeyEvent.VK_S && spieler1Y < spielfeld.getHeight() - SCHLAEGER_HOEHE && spielLaeuft) {
                 spieler1Y += SCHLAEGER_GESCHWINDIGKEIT;
                 if (spieler1Y > spielfeld.getHeight() - SCHLAEGER_HOEHE) {
                     spieler1Y = spielfeld.getHeight() - SCHLAEGER_HOEHE;
@@ -326,12 +330,12 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             }
         } else {
             // Spieler 2 Steuerung (nur für Client)
-            if (taste == KeyEvent.VK_O && spieler2Y > 0) {
+            if (taste == KeyEvent.VK_O && spieler2Y > 0 && spielLaeuft) {
                 spieler2Y -= SCHLAEGER_GESCHWINDIGKEIT;
                 if (spieler2Y < 0) spieler2Y = 0;
                 client.sendeSpieler2Position(spieler2Y);
             }
-            if (taste == KeyEvent.VK_L && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE) {
+            if (taste == KeyEvent.VK_L && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE && spielLaeuft) {
                 spieler2Y += SCHLAEGER_GESCHWINDIGKEIT;
                 if (spieler2Y > spielfeld.getHeight() - SCHLAEGER_HOEHE) {
                     spieler2Y = spielfeld.getHeight() - SCHLAEGER_HOEHE;
@@ -583,6 +587,15 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                 spieler2Y = Integer.parseInt(teile[3]);
                 spieler1Punkte = Integer.parseInt(teile[4]);
                 spieler2Punkte = Integer.parseInt(teile[5]);
+                
+                // Prüfe, ob das Spiel beendet ist (ein Spieler hat 3 Punkte)
+                if (spieler1Punkte >= 3 || spieler2Punkte >= 3) {
+                    spielLaeuft = false;
+                    System.out.println("Spiel beendet: Punktestand " + spieler1Punkte + ":" + spieler2Punkte);
+                } else {
+                    spielLaeuft = true;
+                }
+                
                 spielfeld.repaint();
             }
         } else if (command.equals("MODUS")) {
