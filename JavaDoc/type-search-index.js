@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"Alle Klassen und Schnittstellen","u":"allclasses-index.html"},{"p":"<Unnamed>","l":"SpielClient"},{"p":"<Unnamed>","l":"SpielFeld"},{"p":"<Unnamed>","l":"SpielModus"},{"p":"<Unnamed>","l":"SpielRahmen"},{"p":"<Unnamed>","l":"SpielServer"},{"p":"<Unnamed>","l":"SpielSteuerung"}];updateSearchResults();

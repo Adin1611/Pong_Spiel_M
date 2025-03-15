@@ -1,6 +1,9 @@
 import java.io.*;
 import java.net.*;
 
+/**
+ * Die Klasse SpielServer repräsentiert den Server für das Pong-Spiel
+ */
 public class SpielServer implements Runnable {
     private ServerSocket serverSocket; // für die Annahme von Client-Verbindungen
     private Socket clientSocket; // für die Verbindung zum verbundenen Client

@@ -1,6 +1,9 @@
 import java.io.*;
 import java.net.*;
 
+/**
+ * Die Klasse SpielClient repräsentiert den Client für das Pong-Spiel
+ */
 public class SpielClient implements Runnable {
     private Socket socket; // für die Verbindung zum Server
     private PrintWriter out; // zum Senden von Ausgbane an den Server
