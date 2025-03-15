@@ -32,6 +32,7 @@ public class SpielFeld extends JPanel {
         titelLabel.setFont(new Font("Arial", Font.BOLD, 40));
         titelLabel.setForeground(Color.WHITE); // Setzt die Schriftfarbe auf Weiß
 
+        // in zeigeSpielmodusAuswahl() geaddet
         infoLabel = new JLabel("Wähle Spielmodus");
         infoLabel.setFont(new Font("Arial", Font.PLAIN, 20));
         infoLabel.setForeground(Color.WHITE);
@@ -60,7 +61,7 @@ public class SpielFeld extends JPanel {
                 verbindungsLabel.setText("Warte auf Client-Verbindung...");
                 repaint();
                 
-                // Timer, der jede Sekunde (1000ms) überprüft, ob ein Client mit dem Server (Host) verbunden ist.
+                // Timer, der jede Sekunde (1000ms) überprüft, ob ein Client mit dem Host verbunden ist.
                 // Sobald eine Verbindung hergestellt wurde, wird die Anzeige aktualisiert und der Timer gestoppt.
                 Timer verbindungsTimer = new Timer(1000, new ActionListener() {
                     @Override
@@ -87,28 +88,44 @@ public class SpielFeld extends JPanel {
                 }
                 
                 steuerung = new SpielSteuerung(SpielFeld.this, ip);
-                versteckeAlleButtons();
+                versteckeButtonsLabels();
                 repaint();
             
-                /* braucht man glaub ich nicht
+                // Dieser Timer überprüft jede Sekunde (1000ms), ob eine Verbindung zum Server hergestellt wurde.
+                // Er wird gestartet, nachdem der Benutzer auf "Als Client verbinden" geklickt hat.
+                // Sobald eine Verbindung hergestellt wurde, wird die Anzeige aktualisiert und der Timer gestoppt.
                 Timer verbindungsTimer = new Timer(1000, new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         if (steuerung != null && steuerung.isVerbunden()) {
-                            zeigeSpielmodusAuswahl();
                             ((Timer) e.getSource()).stop();
                         }
                     }
                 });
                 verbindungsTimer.start();
-                */
             }
         });
 
         // Spielmodus-Button ActionListener
-        einfachButton.addActionListener(e -> startSpiel(SpielModus.EINFACH));
-        mittelButton.addActionListener(e -> startSpiel(SpielModus.MITTEL));
-        schwerButton.addActionListener(e -> startSpiel(SpielModus.SCHWER));
+        einfachButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                startSpiel(SpielModus.EINFACH);
+            }
+        });
+        mittelButton.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e){
+                startSpiel(SpielModus.MITTEL);
+            }
+        });
+        schwerButton.addActionListener(new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e){
+                startSpiel(SpielModus.SCHWER);
+            }
+        });
+
 
         setLayout(new GridBagLayout()); // Setzt das Layout auf GridBagLayout (= organisiert Komponenten
         // in einem Raster, wobei jede Zelle anpassbar ist (z.B. Größe, Abstände, Positionierung).
@@ -126,8 +143,6 @@ public class SpielFeld extends JPanel {
         // Hinzufügen der Komponenten zum Spielfeld
         add(titelLabel, gbc); // fügt eine Komponente unter Berücksichtigung der Constraints (Regeln) hinzu
         gbc.gridy++; // Nächste Zeile
-        add(infoLabel, gbc);
-        gbc.gridy++;
         add(hostButton, gbc);
         gbc.gridy++;
         add(ipTextField, gbc);
@@ -135,92 +150,53 @@ public class SpielFeld extends JPanel {
         add(clientButton, gbc);
         gbc.gridy++;
         add(verbindungsLabel, gbc);
-    }
-
-    /**
-     * Zeigt die initiale Netzwerkauswahl an
-     */
-    private void zeigeNetzwerkAuswahl() {
-        removeAll();
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.insets = new Insets(10, 0, 10, 0);
-        gbc.anchor = GridBagConstraints.CENTER;
-
-        add(titelLabel, gbc);
-        gbc.gridy++;
-        add(new JLabel("Wähle Spielmodus:"), gbc);
-        gbc.gridy++;
-        add(hostButton, gbc);
-        gbc.gridy++;
-        add(ipTextField, gbc);
-        gbc.gridy++;
-        add(clientButton, gbc);
-        gbc.gridy++;
-        add(verbindungsLabel, gbc);
-
-        // Verstecke Spielmodus-Buttons
-        einfachButton.setVisible(false);
-        mittelButton.setVisible(false);
-        schwerButton.setVisible(false);
-
-        revalidate();
-        repaint();
     }
 
     /**
      * Zeigt die Spielmodus-Auswahl an
      */
     public void zeigeSpielmodusAuswahl() {
-        removeAll();
+        removeAll(); // Vordefinierte Methode (aus Klasse: Container), die alle Komponenten aus dem Container entfernt
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.insets = new Insets(10, 0, 10, 0);
         gbc.anchor = GridBagConstraints.CENTER;
-
+        
+        // Labels und Spielmodus-Buttons werden nur für den Host angezeigt
         add(titelLabel, gbc);
         gbc.gridy++;
         add(infoLabel, gbc);
-        
-        // Zeige Spielmodus-Buttons nur für den Host
-        if (steuerung != null && steuerung.istHost()) {
-            gbc.gridy++;
-            add(einfachButton, gbc);
-            gbc.gridy++;
-            add(mittelButton, gbc);
-            gbc.gridy++;
-            add(schwerButton, gbc);
-            
-            einfachButton.setVisible(true);
-            mittelButton.setVisible(true);
-            schwerButton.setVisible(true);
-        } else {
-            // Für den Client: Zeige nur eine Meldung, dass auf den Host gewartet wird
-            gbc.gridy++;
-            infoLabel.setText("Warte auf Spielmodus-Auswahl des Hosts...");
-        }
-        
+        gbc.gridy++;
+        add(einfachButton, gbc);
+        gbc.gridy++;
+        add(mittelButton, gbc);
+        gbc.gridy++;
+        add(schwerButton, gbc);
         gbc.gridy++;
         add(verbindungsLabel, gbc);
-
-        revalidate();
-        repaint();
+            
+        einfachButton.setVisible(true);
+        mittelButton.setVisible(true);
+        schwerButton.setVisible(true);
+        
+        revalidate(); // Layout neu berechnen
+        repaint(); // Panel neu zeichnen
     }
 
     /**
      * Versteckt alle Buttons und Labels
      */
-    private void versteckeAlleButtons() {
+    private void versteckeButtonsLabels() {
         hostButton.setVisible(false);
         clientButton.setVisible(false);
         ipTextField.setVisible(false);
         einfachButton.setVisible(false);
         mittelButton.setVisible(false);
         schwerButton.setVisible(false);
-        infoLabel.setVisible(false);
         titelLabel.setVisible(false);
+        infoLabel.setVisible(false);
         verbindungsLabel.setVisible(false);
     }
 
@@ -229,17 +205,19 @@ public class SpielFeld extends JPanel {
      */
     public void spielGestartet() {
         spielGestartet = true;
-        versteckeAlleButtons();
+        versteckeButtonsLabels();
         
-        // Entferne zuerst alle KeyListener, um Duplikate zu vermeiden
+        // Alle KeyListener zuvor entfernen, um Duplikate zu vermeiden
         KeyListener[] listeners = getKeyListeners();
         for (KeyListener listener : listeners) {
             removeKeyListener(listener);
         }
         
-        // Füge den KeyListener hinzu
-        addKeyListener(steuerung);
-        requestFocusInWindow();
+        addKeyListener(steuerung); // Fügt den KeyListener hinzu
+        requestFocusInWindow(); // requestFocusInWindow() fordert den Eingabefokus für diese Komponente an,
+                                // Dies ist wichtig, damit die Komponente Tastatureingaben empfangen kann
+                                // Ohne diesen Aufruf würden KeyListener nicht funktionieren, da die Komponente
+                                // nicht im Fokus wäre und daher keine Tastaturereignisse erhalten würde
     }
 
     /**
@@ -247,47 +225,18 @@ public class SpielFeld extends JPanel {
      */
     private void startSpiel(SpielModus modus) {
         spielGestartet = true;
-        versteckeAlleButtons();
+        versteckeButtonsLabels();
         steuerung.setModus(modus);
         addKeyListener(steuerung);
         requestFocusInWindow();
         
-        // Starte den Spielthread
+        // Spielthread starten 
         spielThread = new Thread(steuerung);
         spielThread.start();
-        
-        // Markiere das Spiel als gestartet
-        spielGestartet();
     }
 
     /**
-     * Setzt das Spiel zurück
-     */
-    public void resetSpiel() {
-        spielGestartet = false;
-        if (steuerung != null) {
-            steuerung.beendeSpiel();
-        }
-        removeKeyListener(steuerung);
-        zeigeNetzwerkAuswahl();
-    }
-
-    /**
-     * Zeichnet das Spielfeld.
-     *
-     * @param g Das Graphics-Objekt zum Zeichnen.
-     */
-    @Override
-    public void paintComponent(Graphics g) {
-        super.paintComponent(g); // Zweck: Hintergrund der Komponente vor dem Zeichnen gelöscht wird,
-        // füllen des Hintergrunds mit der aktuellen usw.
-        if (spielGestartet) {
-            steuerung.zeichneSpielfeld(g); // Zeichnet das Spielfeld, wenn das Spiel gestartet ist
-        }
-    }
-
-    /**
-     * Zeigt eine Pause-Nachricht in einer Box an
+     * Zeigt eine Pause-Nachricht in einer Box an, bei dem, der das Spiel nicht gestoppt hat 
      */
     public void zeigePauseNachricht(String nachricht) {
         if (pauseNachrichtFrame != null) {
@@ -305,7 +254,8 @@ public class SpielFeld extends JPanel {
         gbc.gridy = 0;
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        JLabel nachrichtLabel = new JLabel(nachricht);
+        JLabel nachrichtLabel = new JLabel(nachricht); // nachricht: "Spieler 1 hat das Spiel pausiert"
+                                                       //       oder "Spieler 2 hat das Spiel pausiert"
         nachrichtLabel.setFont(new Font("Arial", Font.BOLD, 14));
         panel.add(nachrichtLabel, gbc);
 
@@ -320,6 +270,20 @@ public class SpielFeld extends JPanel {
         if (pauseNachrichtFrame != null) {
             pauseNachrichtFrame.dispose();
             pauseNachrichtFrame = null;
+        }
+    }
+
+    /**
+     * Zeichnet das Spielfeld.
+     *
+     * @param g Das Graphics-Objekt zum Zeichnen.
+     */
+    @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g); // Zweck: Hintergrund der Komponente vor dem Zeichnen gelöscht wird,
+                                 //  füllen des Hintergrunds mit der aktuellen Hintergrundfabreusw.
+        if (spielGestartet) { // Zeichnet das Spielfeld, wenn das Spiel gestartet ist
+            steuerung.zeichneSpielfeld(g); 
         }
     }
 }
