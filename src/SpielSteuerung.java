@@ -224,6 +224,10 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                 update();
                 sendeSpielZustand(); // SpielZustand an Client senden
             }
+            // Pausiert den aktuellen Thread für 10 Millisekunden.
+            // Dies wird verwendet, um eine flüssige Ausführung der Spielschleife zu ermöglichen.
+            // Wenn der Thread unterbrochen wird (z.B. durch einen anderen Thread), wird eine InterruptedException ausgelöst.
+            // In diesem Fall wird die Methode beendet, um sicherzustellen, dass keine weiteren Aktionen ausgeführt werden.
             try {
                 Thread.sleep(10);
             } catch (InterruptedException ex) {
