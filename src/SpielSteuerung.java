@@ -524,7 +524,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         String[] parts = zustand.split(":"); // Format: BEFEHL:DATEN (ballx, bally, spieler1Y, spieler2Y, spieler1Punkte, spieler2Punkte)
         if (parts.length != 2) return;
         
-        //String befehl = parts[0];
         String daten = parts[1];
         String[] teile = daten.split(","); // Format: ballX,ballY,spieler1Y,spieler2Y,spieler1Punkte,spieler2Punkte
        

@@ -42,8 +42,8 @@ public class SpielFeld extends JPanel {
         verbindungsLabel.setForeground(Color.WHITE);
 
         // Initialisierung der Netzwerk-Komponenten
-        hostButton = new JButton("Als Host spielen");
-        clientButton = new JButton("Als Client verbinden");
+        hostButton = new JButton("Als Host spielen"); // Host = der Server startet + 1.Client (spieler1)
+        clientButton = new JButton("Als Client verbinden"); // Client = verbindet sich mit Server -> 2.Client (spieler2)
         ipTextField = new JTextField(15);
         ipTextField.setToolTipText("Server-IP-Adresse eingeben");
 
