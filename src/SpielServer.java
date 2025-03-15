@@ -69,10 +69,12 @@ public class SpielServer implements Runnable {
      * @param nachricht Die empfangene Nachricht
      */
     private void verarbeiteClientNachricht(String nachricht) {
-        // Format der Nachricht: COMMAND:DATA
+        // Format der Nachricht: BEFEHL:DATEN
         String[] parts = nachricht.split(":");
+    
         String command = parts[0];
-
+        
+        // Ohne dem würde die Pause-Nachricht beim Host nicht entfernt werden
         if (command.equals("VERSTECKE_NACHRICHT")) {
             // Verstecke die Pause-Nachricht beim Host
             spielSteuerung.versteckePauseNachricht();
@@ -82,17 +84,16 @@ public class SpielServer implements Runnable {
         switch (command) {
             case "MOVE":
                 int neuePosition = Integer.parseInt(parts[1]);
+                System.out.println(neuePosition);
                 if (neuePosition == -5) {
                     // Pause-Nachricht vom Client - nur Nachricht anzeigen, kein Pause-Menü
                     spielSteuerung.zeigePauseNachricht("Spieler 2 hat das Spiel pausiert");
                     spielSteuerung.setPausiert(true);
                 } else if (neuePosition == -1) {
-                    // Reset-Signal
+                    // Neustart-Signal
                     spielSteuerung.versteckePauseNachricht();
                     spielSteuerung.spielNeustarten();
-                    sendeSpielZustand("RESET:");
-                } else if (neuePosition == -2) {
-                    // Pause-Signal - nicht mehr verwendet
+                    sendeSpielZustand("NEUSTART:");
                 } else if (neuePosition == -4) {
                     // Fortsetzen-Signal
                     spielSteuerung.versteckePauseNachricht();
@@ -103,7 +104,6 @@ public class SpielServer implements Runnable {
                     spielSteuerung.updateSpieler2Position(neuePosition);
                 }
                 break;
-            // Weitere Befehle können hier hinzugefügt werden
         }
     }
 
@@ -113,8 +113,9 @@ public class SpielServer implements Runnable {
      */
     public void sendeSpielZustand(String spielZustand) {
         if (out != null) {
-            // Bei FORTSETZEN oder RESET auch die Pause-Nachricht entfernen
-            if (spielZustand.startsWith("FORTSETZEN:") || spielZustand.startsWith("RESET:")) {
+            // Bei FORTSETZEN oder NEUSTART auch die Pause-Nachricht entfernen
+            // Sonst wird Pause-Nachricht beim Client nicht entfernt
+            if (spielZustand.startsWith("FORTSETZEN:") || spielZustand.startsWith("NEUSTART:")) {
                 out.println("VERSTECKE_NACHRICHT:");
             }
             out.println(spielZustand);
@@ -150,7 +151,7 @@ public class SpielServer implements Runnable {
      * Prüft, ob ein Client verbunden ist
      * @return true wenn ein Client verbunden ist, sonst false
      */
-    public boolean isClientVerbunden() {
+    public boolean istClientVerbunden() {
         return clientSocket != null && clientSocket.isConnected();
     }
 }

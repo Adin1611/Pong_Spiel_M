@@ -16,9 +16,8 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private static final int SCHLAEGER_BREITE = 20; // Breite der Schläger
     private static final int SCHLAEGER_HOEHE = 100; // Höhe der Schläger
     private static final int BALL_GROESSE = 20; // Durchmesser des Balls
-    private static final int SCHLAEGER_ABSTAND = 10; // Abstand der Schläger vom Spielfeldrand
+    private static final int SCHLAEGER_ABSTAND = 10; // Abstand des linken Schläger vom Spielfeldrand
     private static final int SCHLAEGER_GESCHWINDIGKEIT = 15;
-    private long letzterTastendruck = 0;
     private static final long TASTENDRUCK_VERZOEGERUNG = 50; // 50ms Verzögerung zwischen Tastendrücken
 
     private int spieler1Y; // Y-Position des Schlägers des Spieler1
@@ -29,32 +28,16 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     private int ballYGeschwindigkeit; // Geschwindigkeit des Balls in y
     private int spieler1Punkte = 0; // Punktestand des Spieler1
     private int spieler2Punkte = 0; // Punktestand des Spieler2
+    private long letzterTastendruck = 0;
     private SpielModus modus; // Spielmodus
-    private JFrame pausenMenueFrame;
-    private Thread spielThread; // Thread für die Spiel
+    private JFrame pausenMenueFrame; // Pausen-Menü
+    private Thread spielThread; // Thread für Spiel
     private boolean spielLaeuft = true;
     public boolean istPausiert = false;
     private boolean istPausenMenueOffen = false;
-    private SpielServer server;  // Nur für Host
-    private SpielClient client;  // Nur für Client
+    private SpielServer server;  // für Host
+    private SpielClient client;  // für Client
     private boolean istHost;     // Unterscheidung zwischen Host und Client
-
-    /**
-     * Konstruktor für Host-Modus (Spieler 1)
-     * @param spielfeld Das Spielfeld
-     */
-    public SpielSteuerung(SpielFeld spielfeld) {
-        this(spielfeld, true, null);
-    }
-
-    /**
-     * Konstruktor für Client-Modus (Spieler 2)
-     * @param spielfeld Das Spielfeld
-     * @param serverIP Die IP-Adresse des Servers
-     */
-    public SpielSteuerung(SpielFeld spielfeld, String serverIP) {
-        this(spielfeld, false, serverIP);
-    }
 
     /**
      * Gemeinsamer Konstruktor für beide Modi
@@ -64,19 +47,38 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         this.istHost = istHost;
         
         spielfeld.setFocusable(true);
-        spieler1Y = spielfeld.getHeight() / 2 - SCHLAEGER_HOEHE / 2;
-        spieler2Y = spielfeld.getHeight() / 2 - SCHLAEGER_HOEHE / 2;
+        spieler1Y = spielfeld.getHeight() / 2 - SCHLAEGER_HOEHE / 2; // Mitte des Spielfelds
+        spieler2Y = spielfeld.getHeight() / 2 - SCHLAEGER_HOEHE / 2; // Mitte des Spielfelds
         spieler1Punkte = 0;
         spieler2Punkte = 0;
 
-        if (istHost) {
-            server = new SpielServer(this);
-            server.startServer();
-        } else {
+        if (istHost) { // Ist Host
+            server = new SpielServer(this); 
+            server.startServer(); // Server starten
+        } else { // Ist Client
             client = new SpielClient(this, serverIP);
-            client.verbindeMitServer();
+            client.verbindeMitServer(); // Client-Verbindung starten
         }
     }
+
+    /**
+     * Vereinfachter Konstruktor für Host-Modus (Spieler 1)
+     * @param spielfeld Das Spielfeld
+     */
+    public SpielSteuerung(SpielFeld spielfeld) {
+        this(spielfeld, true, null);
+    }
+
+    /**
+     * Vereinfachter Konstruktor für Client-Modus (Spieler 2)
+     * @param spielfeld Das Spielfeld
+     * @param serverIP Die IP-Adresse des Servers
+     */
+    public SpielSteuerung(SpielFeld spielfeld, String serverIP) {
+        this(spielfeld, false, serverIP);
+    }
+
+    
 
     /**
      * Berechnet dynamisch die x-Koordinate des rechten Schlägers auf Basis der Spielfeldbreite
@@ -96,8 +98,9 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         initialisiereModus();
         ballZuruecksetzen();
         
-        // Sende den Modus an den Client, wenn wir der Host sind
-        if (istHost && server != null && server.isClientVerbunden()) {
+        // Sendet den Spielmodus an den Client, wenn der Host aktiv ist und ein Client verbunden ist.
+        // Dies gewährleistet, dass beide Spieler im gleichen Modus spielen und synchronisiert sind.
+        if (istHost && server != null && server.istClientVerbunden()) {
             server.sendeModus(modus);
         }
     }
@@ -122,7 +125,7 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         spielThread = new Thread(this);
         spielThread.start();
         
-        // Benachrichtige das Spielfeld, dass das Spiel gestartet wurde
+        // Spielfeld benachrichtigen, dass das Spiel gestartet wurde
         spielfeld.spielGestartet();
     }
 
@@ -159,9 +162,9 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 40));
             String siegerText = spieler1Punkte >= 3 ? "Spieler 1 gewinnt!" : "Spieler 2 gewinnt!";
-            FontMetrics fm = g.getFontMetrics();
-            int textWidth = fm.stringWidth(siegerText);
-            int textHeight = fm.getHeight();
+            FontMetrics fm = g.getFontMetrics(); // um Informationen über die Schriftart zu erhalten
+            int textWidth = fm.stringWidth(siegerText); // Breite des Textes (je nach Schriftart) holen
+            int textHeight = fm.getHeight(); // Höhe des Textes (je nach Schriftart) holen
             g.drawString(siegerText, (spielfeld.getWidth() - textWidth) / 2, (spielfeld.getHeight() - textHeight) / 2); // Zeichnet den Siegertext in der Mitte des Spielfelds
 
             g.setFont(new Font("Arial", Font.PLAIN, 20));
@@ -214,9 +217,12 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         spielThread = Thread.currentThread();
         
         while (spielLaeuft && !istPausiert) {
+            // Wenn Host, wird die Spiellogik aktualisiert und der aktuelle Spielzustand an den verbundenen Client gesendet. 
+            // Dies stellt sicher, dass der Client die neuesten Informationen über die Positionen der Spieler und den Ball erhält, 
+            // um das Spiel synchron zu halten.
             if (istHost) {
                 update();
-                sendeSpielZustand();
+                sendeSpielZustand(); // SpielZustand an Client senden
             }
             try {
                 Thread.sleep(10);
@@ -274,8 +280,8 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         ballX = spielfeld.getWidth() / 2 - BALL_GROESSE / 2; // Ball mittig in der x-Achse positionieren
         ballY = spielfeld.getHeight() / 2 - BALL_GROESSE / 2; // Ball mittig in der y-Achse positionieren
         ballXGeschwindigkeit = Math.abs(ballXGeschwindigkeit) * (spieler1Punkte > spieler2Punkte ? -1 : 1); // Richtung
-        // basierend auf Punktestand (am Anfang: fliegt der Ball immer nach rechts, danach: -1: links, 1: rechts)
-        ballYGeschwindigkeit = Math.abs(ballYGeschwindigkeit); // Sicherstellen, dass der Ball korrekt startet
+        // basierend auf Punktestand (am Anfang: fliegt der Ball immer nach rechts, danach: -1 -> links, 1 -> rechts)
+        ballYGeschwindigkeit = Math.abs(ballYGeschwindigkeit); // Sicherstellen, dass der Ball korrekt startet (nach Unten)
     }
 
     /**
@@ -286,41 +292,32 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         int taste = e.getKeyCode();
         long aktuelleZeit = System.currentTimeMillis();
         
-        // Prüfe, ob genug Zeit seit dem letzten Tastendruck vergangen ist
+        // Ob genug Zeit seit dem letzten Tastendruck vergangen ist
+        // Ohne dem würden die Schläger-Bewegungen immer schneller werden, desto länger das Spiel geht
         if (aktuelleZeit - letzterTastendruck < TASTENDRUCK_VERZOEGERUNG) {
-            return; // Ignoriere zu schnelle Tastendrücke
+            return; // zu schnelle Tastendrücke ignorieren
         }
         
         letzterTastendruck = aktuelleZeit;
 
-        // Gemeinsame Tastenfunktionen für Host und Client
+        // Gemeinsame Tastenfunktion für Host und Client
         if (taste == KeyEvent.VK_SPACE) {
-            // Debug-Ausgabe
-            System.out.println("Leertaste gedrückt von " + (istHost ? "Host" : "Client"));
-            System.out.println("spielLaeuft: " + spielLaeuft + ", istPausiert: " + istPausiert);
             
-            // Prüfe, ob das Spiel beendet ist (ein Spieler hat 3 Punkte)
+            // Ob Spiel beendet ist (ein Spieler hat 3 Punkte)
+            // Ohne dem könnte man auch wenn das Spiel fertig ist, das Spiel stoppen
             if (spieler1Punkte >= 3 || spieler2Punkte >= 3) {
-                System.out.println("Spiel ist bereits beendet, ignoriere Leertaste");
                 return;
             }
             
-            // Forciere Pause unabhängig vom Status
-            if (!istHost) {
-                // Client sendet Pause-Signal an Server
-                System.out.println("Client sendet Pause-Signal");
-                client.sendeSpieler2Position(-2); // -2 als spezielles Signal für Pause
-                pauseSpiel(); // Direkt pausieren, ohne Bedingung
-            } else {
-                pauseSpiel(); // Direkt pausieren, ohne Bedingung
-            }
+            pauseSpiel(); 
         }
 
-        if (istHost) {
-            // Spieler 1 Steuerung (nur für Host)
+        if (istHost) { // Spieler 1 Steuerung (nur für Host)
             if (taste == KeyEvent.VK_W && spieler1Y > 0 && spielLaeuft) {
                 spieler1Y -= SCHLAEGER_GESCHWINDIGKEIT;
-                if (spieler1Y < 0) spieler1Y = 0;
+                if (spieler1Y < 0){
+                    spieler1Y = 0;
+                }   
             }
             if (taste == KeyEvent.VK_S && spieler1Y < spielfeld.getHeight() - SCHLAEGER_HOEHE && spielLaeuft) {
                 spieler1Y += SCHLAEGER_GESCHWINDIGKEIT;
@@ -328,11 +325,12 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                     spieler1Y = spielfeld.getHeight() - SCHLAEGER_HOEHE;
                 }
             }
-        } else {
-            // Spieler 2 Steuerung (nur für Client)
+        } else { // Spieler 2 Steuerung (nur für Client)
             if (taste == KeyEvent.VK_O && spieler2Y > 0 && spielLaeuft) {
                 spieler2Y -= SCHLAEGER_GESCHWINDIGKEIT;
-                if (spieler2Y < 0) spieler2Y = 0;
+                if (spieler2Y < 0){
+                    spieler2Y = 0;
+                } 
                 client.sendeSpieler2Position(spieler2Y);
             }
             if (taste == KeyEvent.VK_L && spieler2Y < spielfeld.getHeight() - SCHLAEGER_HOEHE && spielLaeuft) {
@@ -344,23 +342,16 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             }
         }
 
-        if (!spielLaeuft && taste == KeyEvent.VK_ENTER) {
-            if (istHost) {
-                server.sendeSpielZustand("RESET:");
-                spielNeustarten();
-            } else {
-                client.sendeSpieler2Position(-1); // Sende spezielle Position als Reset-Signal
-            }
+        // Gemeinsame Tastenfuntkion für Host und CLient
+        if (taste == KeyEvent.VK_ENTER && !spielLaeuft) {
+            spielNeustarten();
         }
     }
 
     /**
      * Anhalten des Spiels und Anzeigen des Pause-Menüs
      */
-    public void pauseSpiel() {
-        System.out.println("pauseSpiel() aufgerufen von " + (istHost ? "Host" : "Client"));
-        System.out.println("istPausenMenueOffen: " + istPausenMenueOffen);
-        
+    public void pauseSpiel() {    
         // Forciere Pause unabhängig vom Status
         istPausiert = true;
         
@@ -373,10 +364,10 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             }
         }
         
-        // Zeige Pause-Menü nur für den Spieler an, der pausiert hat
+        // Pause-Menü nur für den Spieler anzeigen, der pausiert hat
         pausenMenueAnzeigen();
         
-        // Sende Pause-Nachricht nur an den anderen Spieler
+        // Pause-Nachricht nur an den anderen Spieler senden
         if (istHost) {
             server.sendeSpielZustand("PAUSE_NACHRICHT:Spieler 1 hat das Spiel pausiert");
         } else {
@@ -439,82 +430,41 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     }
 
     /**
-     * Zurückkehren zum Hauptmenü
-     */
-    public void zurueckZumHauptmenue() {
-        // Spiel beenden und Verbindung trennen
-        spielLaeuft = false;
-        istPausiert = false;
-        istPausenMenueOffen = false;
-        
-        // Thread beenden
-        if (spielThread != null) {
-            spielThread.interrupt();
-            spielThread = null;
-        }
-        
-        // Punktestände zurücksetzen
-        spieler1Punkte = 0;
-        spieler2Punkte = 0;
-        
-        // Benachrichtige den anderen Spieler
-        if (istHost) {
-            if (server != null) {
-                server.sendeSpielZustand("HAUPTMENUE:");
-                server.stopServer();
-            }
-        } else {
-            if (client != null) {
-                client.sendeSpieler2Position(-3); // -3 als Signal für Hauptmenü
-                client.verbindungSchliessen();
-            }
-        }
-        
-        // Zum Hauptmenü zurückkehren
-        spielfeld.zeigeSpielmodusAuswahl();  // Diese Methode muss public sein
-        spielfeld.repaint();
-    }
-
-    /**
      * Neustarten des Spiels
      */
     public void spielNeustarten() {
-        // Verstecke die Pause-Nachricht
+        // Pause-Nachricht verstecken
         spielfeld.versteckePauseNachricht();
         
-        // Setze Spielzustand zurück
+        // Spielzustand zurücksetzen
         spieler1Punkte = 0;
         spieler2Punkte = 0;
         ballZuruecksetzen();
         istPausiert = false;
         istPausenMenueOffen = false;
         
-        // Beende den alten Thread falls vorhanden
+        // Alten Thread beenden falls vorhanden
         if (spielThread != null) {
             spielThread.interrupt();
             spielThread = null;
         }
         
-        // Benachrichtige den anderen Spieler
+        // Anderen Spieler benachrichtigen
         if (istHost) {
-            server.sendeSpielZustand("RESET:");
+            server.sendeSpielZustand("NEUSTART:");
         } else {
-            client.sendeSpieler2Position(-1); // -1 als Reset-Signal
+            client.sendeSpieler2Position(-1); // -1 als Neustart-Signal
         }
         
-        // Starte das Spiel neu
+        // Spiel neustarten
         spielLaeuft = true;
         spielThread = new Thread(this);
         spielThread.start();
         
-        // Stelle sicher, dass das Spielfeld richtig initialisiert ist
+        // Spielfeld richtig initialisieren
         spielfeld.spielGestartet();
-        
-        // Aktualisiere die Anzeige
+
         spielfeld.repaint();
-        
-        // Debug-Ausgabe
-        System.out.println("Spiel neugestartet von " + (istHost ? "Host" : "Client"));
     }
 
     /**
@@ -525,10 +475,10 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
             pausenMenueFrame.dispose();
         }
         
-        // Verstecke die Pause-Nachricht
+        // Pause-Nachricht verstecken
         spielfeld.versteckePauseNachricht();
         
-        // Benachrichtige den anderen Spieler
+        // Anderen Spieler benachrichtigen
         if (istHost) {
             server.sendeSpielZustand("FORTSETZEN:");
         } else {
@@ -560,7 +510,6 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
                     spielThread = new Thread(SpielSteuerung.this);
                     spielThread.start();
                     
-                    // Stelle sicher, dass das Spielfeld aktiv ist
                     spielfeld.spielGestartet();
                 }
             }
@@ -569,48 +518,31 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
     }
 
     /**
-     * Aktualisiert den Spielzustand basierend auf Netzwerknachrichten
+     * Aktualisiert den Spielzustand basierend auf Netzwerknachrichten (wird vom Client aufgerufen)
      */
     public void updateSpielZustand(String zustand) {
-        String[] parts = zustand.split(":");
+        String[] parts = zustand.split(":"); // Format: BEFEHL:DATEN (ballx, bally, spieler1Y, spieler2Y, spieler1Punkte, spieler2Punkte)
         if (parts.length != 2) return;
         
-        String command = parts[0];
-        String data = parts[1];
-        
-        if (command.equals("UPDATE")) {
-            String[] teile = data.split(",");
-            if (teile.length == 6) {
-                ballX = Integer.parseInt(teile[0]);
-                ballY = Integer.parseInt(teile[1]);
-                spieler1Y = Integer.parseInt(teile[2]);
-                spieler2Y = Integer.parseInt(teile[3]);
-                spieler1Punkte = Integer.parseInt(teile[4]);
-                spieler2Punkte = Integer.parseInt(teile[5]);
+        //String befehl = parts[0];
+        String daten = parts[1];
+        String[] teile = daten.split(","); // Format: ballX,ballY,spieler1Y,spieler2Y,spieler1Punkte,spieler2Punkte
+       
+        if (teile.length == 6) {
+            ballX = Integer.parseInt(teile[0]);
+            ballY = Integer.parseInt(teile[1]);
+            spieler1Y = Integer.parseInt(teile[2]);
+            spieler2Y = Integer.parseInt(teile[3]);
+            spieler1Punkte = Integer.parseInt(teile[4]);
+            spieler2Punkte = Integer.parseInt(teile[5]);
                 
-                // Prüfe, ob das Spiel beendet ist (ein Spieler hat 3 Punkte)
-                if (spieler1Punkte >= 3 || spieler2Punkte >= 3) {
-                    spielLaeuft = false;
-                    System.out.println("Spiel beendet: Punktestand " + spieler1Punkte + ":" + spieler2Punkte);
-                } else {
-                    spielLaeuft = true;
-                }
-                
-                spielfeld.repaint();
-            }
-        } else if (command.equals("MODUS")) {
-            SpielModus modus = SpielModus.valueOf(data);
-            setModusUndStarteSpiel(modus);
-        } else if (command.equals("RESET")) {
-            spielNeustarten();
-        } else if (command.equals("PAUSE_NACHRICHT")) {
-            // Nur Nachricht anzeigen, kein Pause-Menü
-            zeigePauseNachricht(data);
-            istPausiert = true;
-        } else if (command.equals("FORTSETZEN")) {
-            fortsetzenSpiel();
-        } else if (command.equals("HAUPTMENUE")) {
-            zurueckZumHauptmenue();
+            // Ob das Spiel beendet ist (ein Spieler hat 3 Punkte)
+            if (spieler1Punkte >= 3 || spieler2Punkte >= 3) {
+                spielLaeuft = false;
+            } else {
+                spielLaeuft = true;
+            }   
+            spielfeld.repaint();
         }
     }
 
@@ -618,24 +550,16 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Aktualisiert die Position von Spieler 2 (wird vom Server aufgerufen)
      */
     public void updateSpieler2Position(int position) {
-        if (position == -5) {
-            // Pause-Nachricht vom Client
+        if (position == -5) { // Pause-Nachricht vom Client
             spielfeld.zeigePauseNachricht("Client hat das Spiel pausiert");
             istPausiert = true;
-        } else if (position == -1) {
-            // Reset-Signal
-            server.sendeSpielZustand("RESET:");
+        } else if (position == -1) { // NEUSTART-Signal
+            server.sendeSpielZustand("NEUSTART:");
             spielNeustarten();
-        } else if (position == -2) {
-            // Pause-Signal
+        } else if (position == -2) { // PAUSE-Signal
             server.sendeSpielZustand("PAUSE:");
             pauseSpiel();
-        } else if (position == -3) {
-            // Hauptmenü-Signal
-            server.sendeSpielZustand("HAUPTMENUE:");
-            zurueckZumHauptmenue();
-        } else if (position == -4) {
-            // Fortsetzen-Signal
+        } else if (position == -4) { // FORTSETZEN-Signal
             server.sendeSpielZustand("FORTSETZEN:");
             fortsetzenSpiel();
         } else {
@@ -648,9 +572,9 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
      * Sendet den aktuellen Spielzustand an den Client
      */
     private void sendeSpielZustand() {
-        if (server != null && server.isClientVerbunden()) {
+        if (server != null && server.istClientVerbunden()) {
             String zustand = String.format("%d,%d,%d,%d,%d,%d",
-                ballX, ballY, spieler1Y, spieler2Y, spieler1Punkte, spieler2Punkte);
+                ballX, ballY, spieler1Y, spieler2Y, spieler1Punkte, spieler2Punkte); // Format der Zustands-Nachricht die an den Client gesendet wird
             server.sendeSpielZustand("UPDATE:" + zustand);
         }
     }
@@ -667,11 +591,18 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         }
     }
 
-    public boolean isVerbunden() {
+    /**
+    * Überprüft, ob die SpielSteuerung (Host oder Client) verbunden ist.
+    *
+    * @return true, wenn der Host einen aktiven Server hat und ein Client verbunden ist,
+    *         oder wenn der Client aktiv ist und mit dem Server verbunden ist; 
+    *         andernfalls false.
+    */
+    public boolean istVerbunden() {
         if (istHost) {
-            return server != null && server.isClientVerbunden();
+            return server != null && server.istClientVerbunden();
         } else {
-            return client != null && client.isVerbunden();
+            return client != null && client.istVerbunden();
         }
     }
 
@@ -690,6 +621,11 @@ public class SpielSteuerung extends KeyAdapter implements Runnable {
         spielfeld.versteckePauseNachricht();
     }
 
+    /**
+    * Setzt den Pausierungsstatus des Spiels.
+    *
+    * @param pausiert true, um das Spiel zu pausieren; false, um das Spiel fortzusetzen.
+    */
     public void setPausiert(boolean pausiert) {
         this.istPausiert = pausiert;
     }

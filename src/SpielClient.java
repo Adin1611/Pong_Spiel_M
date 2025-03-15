@@ -70,6 +70,7 @@ public class SpielClient implements Runnable {
         
         String command = parts[0];
         
+        // Ohne dem würde die Pause-Nachricht beim Client nicht entfernt werden
         if (command.equals("VERSTECKE_NACHRICHT")) {
             spielSteuerung.versteckePauseNachricht();
             return;
@@ -87,18 +88,15 @@ public class SpielClient implements Runnable {
             case "UPDATE":
                 spielSteuerung.updateSpielZustand(nachricht);
                 break;
-            case "RESET":
-                spielSteuerung.versteckePauseNachricht();
+            case "NEUSTART":
+                //spielSteuerung.versteckePauseNachricht();
                 spielSteuerung.spielNeustarten();
-                break;
-            case "HAUPTMENUE":
-                spielSteuerung.zurueckZumHauptmenue();
                 break;
             case "PAUSE":
                 spielSteuerung.pauseSpiel();
                 break;
             case "FORTSETZEN":
-                spielSteuerung.versteckePauseNachricht();
+                //spielSteuerung.versteckePauseNachricht();
                 spielSteuerung.fortsetzenSpiel();
                 break;
             case "PAUSE_NACHRICHT":
@@ -113,17 +111,16 @@ public class SpielClient implements Runnable {
      */
     public void sendeSpieler2Position(int position) {
         if (out != null) {
-            // Bei speziellen Signalen
+            // Spezielles Signal
             if (position == -5) {
                 // Pause-Nachricht
                 out.println("MOVE:" + position);
-            } else if (position == -4 || position == -1) {
-                // Bei Fortsetzen oder Neustart: Erst Verstecken-Signal senden
+            } else if (position == -4 || position == -1) { // Spezielles Signal - bei Fortsetzen oder Neustart: Erst Verstecken-Signal senden
+                                                           // Sonst würde das PausenMenü beim Host nicht geschlossen werden
                 out.println("VERSTECKE_NACHRICHT:");
                 // Dann das eigentliche Signal
                 out.println("MOVE:" + position);
-            } else {
-                // Normale Bewegung
+            } else { // Normale Bewegung
                 out.println("MOVE:" + position);
             }
         }
@@ -147,7 +144,7 @@ public class SpielClient implements Runnable {
      * Prüft, ob der Client mit dem Server verbunden ist
      * @return true wenn verbunden, sonst false
      */
-    public boolean isVerbunden() {
+    public boolean istVerbunden() {
         return socket != null && socket.isConnected() && !socket.isClosed();
     }
 }

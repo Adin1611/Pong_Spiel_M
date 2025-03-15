@@ -66,7 +66,7 @@ public class SpielFeld extends JPanel {
                 Timer verbindungsTimer = new Timer(1000, new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        if (steuerung != null && steuerung.isVerbunden()) {
+                        if (steuerung != null && steuerung.istVerbunden()) {
                             verbindungsLabel.setText("Client verbunden");
                             ((Timer) e.getSource()).stop();
                         }
@@ -97,7 +97,7 @@ public class SpielFeld extends JPanel {
                 Timer verbindungsTimer = new Timer(1000, new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        if (steuerung != null && steuerung.isVerbunden()) {
+                        if (steuerung != null && steuerung.istVerbunden()) {
                             ((Timer) e.getSource()).stop();
                         }
                     }
