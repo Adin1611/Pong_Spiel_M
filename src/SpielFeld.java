@@ -79,9 +79,9 @@ public class SpielFeld extends JPanel {
         // Client-Button ActionListener
         clientButton.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e){
+            public void actionPerformed(ActionEvent e) {
                 String ip = ipTextField.getText().trim(); // trim(): entfernt alle Leerzeichen, Tabulatoren und Zeilenumbrüche 
-                                                          // am Anfang und Ende des Strings (IP-Adresse)
+                // am Anfang und Ende des Strings (IP-Adresse)
                 if (ip.isEmpty()) {
                     JOptionPane.showMessageDialog(SpielFeld.this, "Bitte geben Sie eine IP-Adresse ein.");
                     return;

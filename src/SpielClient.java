@@ -6,7 +6,7 @@ import java.net.*;
  */
 public class SpielClient implements Runnable {
     private Socket socket; // für die Verbindung zum Server
-    private PrintWriter out; // zum Senden von Ausgbane an den Server
+    private PrintWriter out; // zum Senden von Ausgaben an den Server
     private BufferedReader in; // zum Empfangen von Eingaben vom Sever
     private SpielSteuerung spielSteuerung;
     private boolean isRunning = false; // ob Client aktiv läuft
